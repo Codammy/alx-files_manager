@@ -35,6 +35,16 @@ class DBClient {
     const files = this.db.collection('files');
     return files.countDocuments();
   }
+
+  async create(clt, doc) {
+    const collection = this.db.collection(clt);
+    return collection.insertOne(doc);
+  }
+
+  async findOne(clt, qry) {
+    const collection = this.db.collection(clt);
+    return collection.findOne(qry);
+  }
 }
 
 const dbClient = new DBClient();

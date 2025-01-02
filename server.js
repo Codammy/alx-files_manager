@@ -1,10 +1,13 @@
 import express from 'express';
 import appRoute from './routes/index';
 
-const server = express();
-server.use(appRoute);
+const app = express();
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, () => {
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(appRoute);
+
+app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
