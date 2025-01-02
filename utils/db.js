@@ -2,7 +2,10 @@ import { MongoClient } from 'mongodb';
 
 class DBClient {
   constructor() {
-    const { DB_HOST, DB_PORT, DB_DATABASE } = process.env;
+    let { DB_HOST, DB_PORT, DB_DATABASE } = process.env;
+    DB_HOST = DB_HOST || 'localhost';
+    DB_PORT = DB_PORT || '27017';
+    DB_DATABASE = DB_DATABASE || 'files_manager';
     const uri = `mongodb://${DB_HOST}/${DB_PORT}`;
     // const uri = mongodb+srv://<user>:<password>@<cluster-url>?retryWrites=true&writeConcern=majority
     this.client = new MongoClient(uri, {
