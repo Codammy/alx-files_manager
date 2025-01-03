@@ -10,5 +10,5 @@ export default async function postNew(req, res) {
   const hashedPassword = passwordHash.update(password).digest('hex');
   const data = await dbClient.create('users', { email, password: hashedPassword });
   const ops = data.ops[0];
-  return res.json({ id: ops._id, email: ops.email });
+  return res.status(201).json({ id: ops._id, email: ops.email });
 }
