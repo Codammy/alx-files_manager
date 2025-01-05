@@ -10,11 +10,10 @@ export async function getConnect(req, res) {
 
   const [authType, encodedCredentials] = authorization.trim().split(' ');
 
-  if (authType !== 'Basic' || encodedCredentials.lenght === 0) return res.status(401).json({ error: 'Unauthorized' });
+  if (authType !== 'Basic' || encodedCredentials.length === 0) return res.status(401).json({ error: 'Unauthorized' });
   const decodedCredentials = Buffer.from(encodedCredentials, 'base64').toString('utf8');
   const [decodedEmail, decodedPassword] = decodedCredentials.split(':');
   const user = await dbClient.findOne('users', { email: decodedEmail });
-
   if (!user) { return res.status(401).json({ error: 'Unauthorized' }); }
   const { password, _id } = user;
   const passwordHash = crypto.createHash('SHA1');
