@@ -1,0 +1,79 @@
+import { ObjectId } from 'mongodb';
+import fs from 'fs';
+import { v4 as uuid4 } from 'uuid';
+import dbClient from '../utils/db';
+import redisClient from '../utils/redis';
+
+// eslint-disable-next-line consistent-return
+export default async function postUpload(req, res) {
+  const token = req.headers['x-token'];
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+  const id = await redisClient.get(`auth_${token}`);
+  if (!id) return res.status(401).json({ error: 'Unauthorized' });
+
+  const user = await dbClient.findOne('users', { _id: ObjectId(id) });
+
+  const {
+    name,
+    type,
+    isPublic,
+    parentId,
+    data,
+  } = { ...req.body };
+
+  const acceptedTypes = ['folder', 'file', 'image'];
+  if (!name) return res.status(400).json({ error: 'Missing name' });
+  if (!type || !acceptedTypes.includes(type)) return res.status(400).json({ error: 'Missing type' });
+  if (!data && type !== 'folder') return res.status(400).json({ error: 'Missing data' });
+  if (parentId) {
+    console.log({ name, parentId });
+    const file = await dbClient.findOne('files', { name, parentId });
+    console.log(file);
+    if (!file) return res.status(400).json({ error: 'Parent not found' });
+    if (file.type !== 'folder') return res.status(400).json({ error: 'Parent is not a folder' });
+  }
+  if (type === 'folder') {
+    const savedFile = await dbClient.create('files', {
+      name,
+      type,
+      parentId: parentId || 0,
+      isPublic: isPublic || false,
+      data,
+      userId: user._id,
+    });
+    return res.status(201).json({
+      id: savedFile.insertedId,
+      name,
+      type,
+      parentId: savedFile.ops[0].parentId,
+      isPublic: savedFile.ops[0].isPublic,
+      userId: user._id,
+    });
+  }
+  const FOLDER_PATH = process.env.FOLDER_PATH || '/tmp/files_manager/';
+  if (!fs.existsSync(FOLDER_PATH)) {
+    fs.mkdirSync(FOLDER_PATH, { recursive: true });
+  }
+  fs.writeFile(`${FOLDER_PATH}/${uuid4()}`, Buffer.from(data, 'base64'), async (err) => {
+    if (!err) {
+      const file = await dbClient.create('files', {
+        userId: user._id,
+        name,
+        type,
+        isPublic: isPublic || false,
+        parentId: parentId || 0,
+        localPath: `${FOLDER_PATH}/${uuid4()} `,
+      });
+      return res.status(201).json({
+        id: file.insertedId,
+        userId: user._id,
+        name,
+        type,
+        isPublic: file.ops[0].isPublic,
+        parentId: file.ops[0].parentId,
+        localPath: `${FOLDER_PATH}/${uuid4()} `,
+      });
+    }
+    throw new Error(err.message);
+  });
+}
