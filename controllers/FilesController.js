@@ -12,6 +12,7 @@ export default async function postUpload(req, res) {
   if (!id) return res.status(401).json({ error: 'Unauthorized' });
 
   const user = await dbClient.findOne('users', { _id: ObjectId(id) });
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
   const {
     name,
@@ -76,4 +77,36 @@ export default async function postUpload(req, res) {
     }
     throw new Error(err.message);
   });
+}
+
+export async function getShow(req, res) {
+  console.log(req.params.id);
+  const token = req.headers['x-token'];
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+  const id = await redisClient.get(`auth_${token}`);
+  if (!id) return res.status(401).json({ error: 'Unauthorized' });
+
+  const user = await dbClient.findOne('users', { _id: ObjectId(id) });
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const file = await dbClient.findOne('files', { userId: user._id, _id: req.params.id });
+  if (!file) return res.status(404).json({ error: 'Not found' });
+  console.log(file);
+  return res.json(file);
+}
+
+export async function getIndex(req, res) {
+  console.log(req.params.id);
+  const token = req.headers['x-token'];
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+  const id = await redisClient.get(`auth_${token}`);
+  if (!id) return res.status(401).json({ error: 'Unauthorized' });
+
+  const user = await dbClient.findOne('users', { _id: ObjectId(id) });
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const file = await dbClient.findOne('files', { userId: user._id, _id: req.params.id });
+  if (!file) return res.status(404).json({ error: 'Not found' });
+  console.log(file);
+  return res.json(file);
 }
