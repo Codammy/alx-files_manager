@@ -27,9 +27,7 @@ export default async function postUpload(req, res) {
   if (!type || !acceptedTypes.includes(type)) return res.status(400).json({ error: 'Missing type' });
   if (!data && type !== 'folder') return res.status(400).json({ error: 'Missing data' });
   if (parentId) {
-    console.log({ name, parentId });
     const file = await dbClient.findOne('files', { name, parentId });
-    console.log(file);
     if (!file) return res.status(400).json({ error: 'Parent not found' });
     if (file.type !== 'folder') return res.status(400).json({ error: 'Parent is not a folder' });
   }
@@ -51,7 +49,7 @@ export default async function postUpload(req, res) {
       userId: user._id,
     });
   }
-  const FOLDER_PATH = process.env.FOLDER_PATH || '/tmp/files_manager/';
+  const FOLDER_PATH = process.env.FOLDER_PATH || '/tmp/files_manager';
   if (!fs.existsSync(FOLDER_PATH)) {
     fs.mkdirSync(FOLDER_PATH, { recursive: true });
   }
@@ -91,13 +89,14 @@ export async function getShow(req, res) {
 
   const file = await dbClient.findOne('files', { userId: user._id, _id: req.params.id });
   if (!file) return res.status(404).json({ error: 'Not found' });
-  console.log(file);
   return res.json(file);
 }
 
 export async function getIndex(req, res) {
-  console.log(req.params.id);
+  const { parentId, page } = { ...req.query };
+  const pageSize = 20;
   const token = req.headers['x-token'];
+
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
   const id = await redisClient.get(`auth_${token}`);
   if (!id) return res.status(401).json({ error: 'Unauthorized' });
@@ -105,8 +104,7 @@ export async function getIndex(req, res) {
   const user = await dbClient.findOne('users', { _id: ObjectId(id) });
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  const file = await dbClient.findOne('files', { userId: user._id, _id: req.params.id });
-  if (!file) return res.status(404).json({ error: 'Not found' });
+  const file = await dbClient.find('files', { query: { type: 'file', parentId: parentId || 0 }, paginate: { $limit: pageSize, $skip: ((parseInt(page, 10) || 1) - 1) * pageSize } });
   console.log(file);
   return res.json(file);
 }

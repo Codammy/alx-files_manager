@@ -2,7 +2,7 @@ import express from 'express';
 import { getStats, getStatus } from '../controllers/AppController';
 import postNew from '../controllers/UsersController';
 import { getConnect, getDisConnect, getMe } from '../controllers/AuthController';
-import postUpload, { getShow } from '../controllers/FilesController';
+import postUpload, { getIndex, getShow } from '../controllers/FilesController';
 
 const routes = express.Router();
 
@@ -20,7 +20,7 @@ routes.get('/users/me', getMe);
 
 routes.post('/files', postUpload);
 
-routes.get('/files');
+routes.get('/files', getIndex);
 
 routes.get('/files/:id', getShow);
 

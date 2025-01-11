@@ -45,6 +45,22 @@ class DBClient {
     const collection = this.db.collection(clt);
     return collection.findOne(qry);
   }
+
+  async find(clt, { query = {}, paginate = { $limit: 20, $skip: 0 } }) {
+    const collection = this.db.collection(clt);
+    console.log(query, paginate);
+    return collection.aggregate([
+      {
+        $match: query,
+      },
+      {
+        $facet: {
+          metadata: [{ $count: 'totalCount' }],
+          data: [{ $limit: 0 }, { $skip: 0 }],
+        },
+      },
+    ]).toArray();
+  }
 }
 
 const dbClient = new DBClient();
