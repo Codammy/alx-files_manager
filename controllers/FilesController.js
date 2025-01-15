@@ -89,7 +89,7 @@ export async function getShow(req, res) {
 
   const file = await dbClient.findOne('files', { userId: user._id, _id: req.params.id });
   if (!file) return res.status(404).json({ error: 'Not found' });
-  return res.json(file);
+  return res.json(file);z
 }
 
 export async function getIndex(req, res) {
@@ -104,7 +104,7 @@ export async function getIndex(req, res) {
   const user = await dbClient.findOne('users', { _id: ObjectId(id) });
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  const file = await dbClient.find('files', { query: { type: 'file', parentId: parentId || 0 }, paginate: { $limit: pageSize, $skip: ((parseInt(page, 10) || 1) - 1) * pageSize } });
+  const file = await dbClient.find('files', { query: { type: 'file', parentId: parentId || '0' }, paginate: [{ $limit: pageSize }, { $skip: ((parseInt(page, 10) || 1) - 1) * pageSize }] });
   console.log(file);
   return res.json(file);
 }

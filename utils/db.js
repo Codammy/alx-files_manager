@@ -50,15 +50,16 @@ class DBClient {
     const collection = this.db.collection(clt);
     console.log(query, paginate);
     return collection.aggregate([
-      {
-        $match: query,
-      },
-      {
-        $facet: {
-          metadata: [{ $count: 'totalCount' }],
-          data: [...paginate],
-        },
-      },
+      // {
+      //   $match: query,
+      // },
+      // {
+      //   $facet: {
+      //     metadata: [{ $count: 'totalCount' }],
+      //     data: paginate,
+      //   },
+      // }
+      // ...paginate,
     ]).toArray();
   }
 }
