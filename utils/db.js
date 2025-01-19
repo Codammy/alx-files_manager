@@ -46,9 +46,14 @@ class DBClient {
     return collection.findOne(qry);
   }
 
+  async updateOne(clt, query, update) {
+    const collection = this.db.collection(clt);
+    console.log(query, update);
+    await collection.updateOne(query, { $set: update });
+  }
+
   async find(clt, { query = {}, paginate = [{ $skip: 0 }, { $limit: 20 }] }) {
     const collection = this.db.collection(clt);
-    console.log(query, ...paginate);
     return collection.aggregate([
       {
         $match: query,

@@ -86,9 +86,7 @@ export async function getShow(req, res) {
   const user = await dbClient.findOne('users', { _id: ObjectId(id) });
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  console.log(req.params.id, user._id);
   const file = await dbClient.findOne('files', { userId: user._id, _id: ObjectId(req.params.id) });
-  console.log(file);
   if (!file) return res.status(404).json({ error: 'Not found' });
   return res.json(file);
 }
@@ -107,4 +105,35 @@ export async function getIndex(req, res) {
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
   const file = await dbClient.find('files', { query: { parentId: parentId || 0 }, paginate: [{ $skip: pageNo * pageSize }, { $limit: pageSize }] });
   return res.json(file);
+}
+
+export async function putPublish(req, res) {
+  const token = req.headers['x-token'];
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+  const id = await redisClient.get(`auth_${token}`);
+  if (!id) return res.status(401).json({ error: 'Unauthorized' });
+
+  const user = await dbClient.findOne('users', { _id: ObjectId(id) });
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const file = await dbClient.findOne('files', { userId: user._id, _id: ObjectId(req.params.id) });
+  if (!file) return res.status(404).json({ error: 'Not found' });
+  await dbClient.updateOne('files', { userId: user._id, _id: ObjectId(req.params.id) }, { isPublic: true });
+  return res.json({ ...file, isPublic: true });
+}
+
+export async function putUnpublish(req, res) {
+  const token = req.headers['x-token'];
+  if (!token) return res.status(401).json({ error: 'Unauthorized' });
+  const id = await redisClient.get(`auth_${token}`);
+  if (!id) return res.status(401).json({ error: 'Unauthorized' });
+
+  const user = await dbClient.findOne('users', { _id: ObjectId(id) });
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const file = await dbClient.findOne('files', { userId: user._id, _id: ObjectId(req.params.id) });
+  if (!file) return res.status(404).json({ error: 'Not found' });
+  await dbClient.updateOne('files', { userId: user._id, _id: ObjectId(req.params.id) }, { isPublic: false });
+
+  return res.json({ ...file, isPublic: false });
 }
