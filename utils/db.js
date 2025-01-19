@@ -46,20 +46,20 @@ class DBClient {
     return collection.findOne(qry);
   }
 
-  async find(clt, { query = {}, paginate = [{ $limit: 20 }, { $skip: 0 }] }) {
+  async find(clt, { query = {}, paginate = [{ $skip: 0 }, { $limit: 20 }] }) {
     const collection = this.db.collection(clt);
-    console.log(query, paginate);
+    console.log(query, ...paginate);
     return collection.aggregate([
+      {
+        $match: query,
+      },
       // {
-      //   $match: query,
+      // $facet: {
+      //   metadata: [{ $count: 'totalCount' }],
+      //   data: paginate,
       // },
-      // {
-      //   $facet: {
-      //     metadata: [{ $count: 'totalCount' }],
-      //     data: paginate,
-      //   },
-      // }
-      // ...paginate,
+      // },
+      ...paginate,
     ]).toArray();
   }
 }

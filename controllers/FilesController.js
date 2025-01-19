@@ -70,7 +70,7 @@ export default async function postUpload(req, res) {
         type,
         isPublic: file.ops[0].isPublic,
         parentId: file.ops[0].parentId,
-        localPath: `${FOLDER_PATH}/${uuid4()} `,
+        localPath: `${FOLDER_PATH}/${uuid4()}`,
       });
     }
     throw new Error(err.message);
@@ -78,7 +78,6 @@ export default async function postUpload(req, res) {
 }
 
 export async function getShow(req, res) {
-  console.log(req.params.id);
   const token = req.headers['x-token'];
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
   const id = await redisClient.get(`auth_${token}`);
@@ -87,14 +86,17 @@ export async function getShow(req, res) {
   const user = await dbClient.findOne('users', { _id: ObjectId(id) });
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  const file = await dbClient.findOne('files', { userId: user._id, _id: req.params.id });
+  console.log(req.params.id, user._id);
+  const file = await dbClient.findOne('files', { userId: user._id, _id: ObjectId(req.params.id) });
+  console.log(file);
   if (!file) return res.status(404).json({ error: 'Not found' });
-  return res.json(file);z
+  return res.json(file);
 }
 
 export async function getIndex(req, res) {
   const { parentId, page } = { ...req.query };
   const pageSize = 20;
+  const pageNo = parseInt(page, 10) > 0 ? page : 0;
   const token = req.headers['x-token'];
 
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
@@ -103,8 +105,6 @@ export async function getIndex(req, res) {
 
   const user = await dbClient.findOne('users', { _id: ObjectId(id) });
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
-
-  const file = await dbClient.find('files', { query: { type: 'file', parentId: parentId || '0' }, paginate: [{ $limit: pageSize }, { $skip: ((parseInt(page, 10) || 1) - 1) * pageSize }] });
-  console.log(file);
+  const file = await dbClient.find('files', { query: { parentId: parentId || 0 }, paginate: [{ $skip: pageNo * pageSize }, { $limit: pageSize }] });
   return res.json(file);
 }
