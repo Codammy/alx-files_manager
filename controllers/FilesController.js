@@ -1,6 +1,7 @@
 import { ObjectId } from 'mongodb';
 import fs from 'fs';
 import { v4 as uuid4 } from 'uuid';
+import mime from 'mime-types';
 import dbClient from '../utils/db';
 import redisClient from '../utils/redis';
 
@@ -53,7 +54,8 @@ export default async function postUpload(req, res) {
   if (!fs.existsSync(FOLDER_PATH)) {
     fs.mkdirSync(FOLDER_PATH, { recursive: true });
   }
-  fs.writeFile(`${FOLDER_PATH}/${uuid4()}`, Buffer.from(data, 'base64'), async (err) => {
+  const FILE_PATH = `${FOLDER_PATH}/${uuid4()}`;
+  fs.writeFile(FILE_PATH, Buffer.from(data, 'base64'), async (err) => {
     if (!err) {
       const file = await dbClient.create('files', {
         userId: user._id,
@@ -61,7 +63,7 @@ export default async function postUpload(req, res) {
         type,
         isPublic: isPublic || false,
         parentId: parentId || 0,
-        localPath: `${FOLDER_PATH}/${uuid4()} `,
+        localPath: FILE_PATH,
       });
       return res.status(201).json({
         id: file.insertedId,
@@ -70,7 +72,7 @@ export default async function postUpload(req, res) {
         type,
         isPublic: file.ops[0].isPublic,
         parentId: file.ops[0].parentId,
-        localPath: `${FOLDER_PATH}/${uuid4()}`,
+        localPath: FILE_PATH,
       });
     }
     throw new Error(err.message);
@@ -136,4 +138,21 @@ export async function putUnpublish(req, res) {
   await dbClient.updateOne('files', { userId: user._id, _id: ObjectId(req.params.id) }, { isPublic: false });
 
   return res.json({ ...file, isPublic: false });
+}
+
+// eslint-disable-next-line consistent-return
+export async function getFile(req, res) {
+  const token = req.headers['x-token'];
+  const id = await redisClient.get(`auth_${token}`);
+
+  const user = await dbClient.findOne('users', { _id: ObjectId(id) });
+
+  const file = await dbClient.findOne('files', { _id: ObjectId(req.params.id) });
+  if (!file || (!file.isPublic && (!user || file.userId !== user._id))) return res.status(404).json({ error: 'Not found' });
+  if (file.type === 'folder') return res.status(400).send({ error: "A folder doesn't have content" });
+  fs.readFile(file.localPath, (err, data) => {
+    if (err) return res.status(404).json({ error: 'Not found on server' });
+    res.header({ 'Content-Type': mime.lookup(file.name) });
+    return res.send(data);
+  });
 }

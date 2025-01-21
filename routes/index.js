@@ -3,6 +3,7 @@ import { getStats, getStatus } from '../controllers/AppController';
 import postNew from '../controllers/UsersController';
 import { getConnect, getDisConnect, getMe } from '../controllers/AuthController';
 import postUpload, {
+  getFile,
   getIndex, getShow, putPublish, putUnpublish,
 } from '../controllers/FilesController';
 
@@ -29,5 +30,7 @@ routes.get('/files/:id', getShow);
 routes.put('/files/:id/publish', putPublish);
 
 routes.put('/files/:id/unpublish', putUnpublish);
+
+routes.get('/files/:id/data', getFile);
 
 export default routes;

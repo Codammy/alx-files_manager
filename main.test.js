@@ -9,9 +9,10 @@ import redis from 'redis';
 import sha1 from 'sha1';
 
 const { MongoClient, ObjectID } = mongodb;
+
 chai.use(chaiHttp);
 
-describe('POST /files', () => {
+describe('GET /files', () => {
   let testClientDb;
   let testRedisClient;
   let redisDelAsync;
@@ -23,7 +24,7 @@ describe('POST /files', () => {
   let initialUserId = null;
   let initialUserToken = null;
 
-  let initialFolderId = null;
+  const initialFiles = [];
 
   const fctRandomString = () => Math.random().toString(36).substring(2, 15);
   const fctRemoveAllRedisKeys = async () => {
@@ -56,17 +57,19 @@ describe('POST /files', () => {
           initialUserId = createdDocs.ops[0]._id.toString();
         }
 
-        // Add 1 folder
-        const initialFakeFolder = {
-          userId: ObjectID(initialUserId),
-          name: 'newFolder',
-          type: 'file',
-          data: Buffer.from('hello', 'binary').toString('base64'),
-          parentId: '0',
-        };
-        const createdFileDocs = await testClientDb.collection('files').insertOne(initialFakeFolder);
-        if (createdFileDocs && createdFileDocs.ops.length > 0) {
-          initialFolderId = createdFileDocs.ops[0]._id.toString();
+        // Add folders
+        for (let i = 0; i < 25; i += 1) {
+          const item = {
+            userId: ObjectID(initialUserId),
+            name: fctRandomString(),
+            type: 'folder',
+            parentId: '0',
+          };
+          const createdFileDocs = await testClientDb.collection('files').insertOne(item);
+          if (createdFileDocs && createdFileDocs.ops.length > 0) {
+            item.id = createdFileDocs.ops[0]._id.toString();
+          }
+          initialFiles.push(item);
         }
 
         testRedisClient = redis.createClient();
@@ -90,31 +93,34 @@ describe('POST /files', () => {
     fctRemoveAllRedisKeys();
   });
 
-  it('POST /files with a parentId not a folder', (done) => {
-    const fileData = {
-      name: fctRandomString(),
-      type: 'folder',
-      parentId: initialFolderId,
-    };
+  it('GET /files with no parentId and second page', (done) => {
     chai.request('http://localhost:5000')
-      .post('/files')
+      .get('/files')
+      .query({ page: 1 })
       .set('X-Token', initialUserToken)
-      .send(fileData)
       .end(async (err, res) => {
         chai.expect(err).to.be.null;
-        chai.expect(res).to.have.status(400);
+        chai.expect(res).to.have.status(200);
 
-        const resError = res.body.error;
-        chai.expect(resError).to.equal('Parent is not a folder');
+        const resList = res.body;
+        chai.expect(resList.length).to.equal(5);
 
-        testClientDb.collection('files')
-          .find({})
-          .toArray((err, docs) => {
-            chai.expect(err).to.be.null;
-            chai.expect(docs.length).to.equal(1);
+        resList.forEach((item) => {
+          const itemIdx = initialFiles.findIndex((i) => i.id == item.id);
+          chai.assert.isAtLeast(itemIdx, 0);
 
-            done();
-          });
+          const itemInit = initialFiles.splice(itemIdx, 1)[0];
+          chai.expect(itemInit).to.not.be.null;
+
+          chai.expect(itemInit.id).to.equal(item.id);
+          chai.expect(itemInit.name).to.equal(item.name);
+          chai.expect(itemInit.type).to.equal(item.type);
+          chai.expect(itemInit.parentId).to.equal(item.parentId);
+        });
+
+        chai.expect(initialFiles.length).to.equal(20);
+
+        done();
       });
-  }).timeout(300000);
+  }).timeout(30000);
 });
